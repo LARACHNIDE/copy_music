@@ -1,0 +1,49 @@
+require 'pathname'
+
+def main
+  @copied_files = 0
+  @warnings = 0
+
+  Pathname('C:/Users/Utilisateur/Downloads').children.each do |file|
+    next unless file.to_s.include?('.mp3')
+
+    move_file_to_correct_folder!(file)
+  end
+  display_stats
+end
+
+def move_file_to_correct_folder!(file)
+  destination_folder = find_destination_folder_for(file)
+  return if destination_folder.nil?
+
+  warn "Moved '#{file.basename}' to '#{destination_folder}'"
+  File.rename(file.to_s, destination_folder.join(file.basename).to_s)
+  @copied_files += 1
+end
+
+def find_destination_folder_for(file)
+  artist_name = file.basename.to_s.split(' - ')[0]
+
+  ret = search_in('C:/Users/Utilisateur/Music', artist_name)
+  return ret unless ret.nil?
+
+  ret = search_in('C:/Users/Utilisateur/Music/AAA Musique de films', artist_name)
+  return ret unless ret.nil?
+
+  warn "--- Could not find any destination folder for #{file.basename} ---"
+  @warnings += 1
+  nil
+end
+
+def search_in(path, artist_name)
+  Pathname(path).children.each do |folder|
+    return folder if folder.to_s.include?(artist_name)
+  end
+  nil
+end
+
+def display_stats
+  puts "-------------\nTotal : #{@copied_files} file(s) copied, #{@warnings} warning(s) raised.\n-------------"
+end
+
+main
