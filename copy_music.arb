@@ -1,10 +1,16 @@
 require 'pathname'
+require 'rainbow/refinement'
+require 'thor'
+using Rainbow
+
+MUSIC_FOLDER = Pathname('C:/Users/Utilisateur/Music')
+DOWNLOADS_FOLDER = Pathname('C:/Users/Utilisateur/Downloads')
 
 def main
   @copied_files = 0
   @warnings = 0
 
-  Pathname('C:/Users/Utilisateur/Downloads').children.each do |file|
+  DOWNLOADS_FOLDER.children.each do |file|
     next unless file.to_s.include?('.mp3')
 
     move_file_to_correct_folder!(file)
@@ -16,7 +22,7 @@ def move_file_to_correct_folder!(file)
   destination_folder = find_destination_folder_for(file)
   return if destination_folder.nil?
 
-  warn "Moved '#{file.basename}' to '#{destination_folder}'"
+  warn "Moved '#{file.basename}' to '#{destination_folder}'".green
   File.rename(file.to_s, destination_folder.join(file.basename).to_s)
   @copied_files += 1
 end
@@ -24,26 +30,38 @@ end
 def find_destination_folder_for(file)
   artist_name = file.basename.to_s.split(' - ')[0]
 
-  ret = search_in('C:/Users/Utilisateur/Music', artist_name)
+  ret = search_in(MUSIC_FOLDER, artist_name)
   return ret unless ret.nil?
 
-  ret = search_in('C:/Users/Utilisateur/Music/AAA Musique de films', artist_name)
+  ret = search_in(MUSIC_FOLDER.join('AAA Musique de films'), artist_name)
   return ret unless ret.nil?
 
-  warn "--- Could not find any destination folder for #{file.basename} ---"
+  warn "--- Could not find any destination folder for #{file.basename} ---".yellow
+  ret = ask_and_create_folder_for(file.basename.to_s)
+  return ret unless ret.nil?
+
   @warnings += 1
   nil
 end
 
-def search_in(path, artist_name)
-  Pathname(path).children.each do |folder|
+def search_in(pathname, artist_name)
+  pathname.children.each do |folder|
     return folder if folder.to_s.include?(artist_name)
   end
   nil
 end
 
 def display_stats
-  puts "-------------\nTotal : #{@copied_files} file(s) copied, #{@warnings} warning(s) raised.\n-------------"
+  puts "-------------\nTotal : #{@copied_files} file(s) copied, #{@warnings} warning(s) raised.\n-------------".blue
+end
+
+def ask_and_create_folder_for(file_name)
+  artist = file_name.split(' - ')[0]
+  folder_path = MUSIC_FOLDER.join(artist)
+  return nil unless Thor::Shell::Basic.new.yes?("Do you want to create the folder #{folder_path} ?".magenta)
+
+  folder_path.mkpath
+  folder_path
 end
 
 main
