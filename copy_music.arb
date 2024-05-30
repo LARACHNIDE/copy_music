@@ -5,17 +5,25 @@ using Rainbow
 
 MUSIC_FOLDER = Pathname('C:/Users/Utilisateur/Music')
 DOWNLOADS_FOLDER = Pathname('C:/Users/Utilisateur/Downloads')
+DIVERS_FOLDER = MUSIC_FOLDER.join('AAA Divers')
 
 def main
   @copied_files = 0
   @warnings = 0
+  @renames = 0
+  @thor = Thor::Shell::Basic.new
 
   DOWNLOADS_FOLDER.children.each do |file|
     next unless file.to_s.include?('.mp3')
 
     move_file_to_correct_folder!(file)
   end
+
   display_stats
+  return if @renames.zero?
+
+  warn "\nOnce again for the files renamed".yellow
+  main
 end
 
 def move_file_to_correct_folder!(file)
@@ -37,7 +45,7 @@ def find_destination_folder_for(file)
   return ret unless ret.nil?
 
   warn "--- Could not find any destination folder for #{file.basename} ---".yellow
-  ret = ask_and_create_folder_for(file.basename.to_s)
+  ret = ask_and_create_folder_for(file)
   return ret unless ret.nil?
 
   @warnings += 1
@@ -55,13 +63,22 @@ def display_stats
   puts "-------------\nTotal : #{@copied_files} file(s) copied, #{@warnings} warning(s) raised.\n-------------".blue
 end
 
-def ask_and_create_folder_for(file_name)
-  artist = file_name.split(' - ')[0]
+def ask_and_create_folder_for(file)
+  artist = file.basename.to_s.split(' - ')[0]
   folder_path = MUSIC_FOLDER.join(artist)
-  return nil unless Thor::Shell::Basic.new.yes?("Do you want to create the folder #{folder_path} ?".magenta)
+  return switch_to_divers?(file) unless @thor.yes?("Do you want to create the folder #{folder_path} ?".magenta)
 
   folder_path.mkpath
   folder_path
+end
+
+def switch_to_divers?(file)
+  new_name = "Divers - #{file.basename}"
+  if @thor.yes?("Do you want to change the file name to #{new_name} ?".magenta)
+    file.rename(file.dirname.join(new_name).to_s)
+    @renames += 1
+  end
+  nil
 end
 
 main
